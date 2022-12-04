@@ -1,10 +1,9 @@
 /* Drew Schuster */
 import java.awt.*;
-import javax.imageio.*;
 import javax.swing.JPanel;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
 import java.lang.Math;
-import java.util.*;
-import java.io.*;
 
 
 /*This board class contains the player, ghosts, pellets, and most of the game logic.*/
@@ -31,43 +30,24 @@ public class Board extends JPanel
   Image winScreenImage = Toolkit.getDefaultToolkit().getImage(Pacman.class.getResource("img/winScreen.jpg"));
   */
   /* For NOT JAR file*/
-  Image pacmanImage = Toolkit.getDefaultToolkit().getImage("img/pacman.jpg"); 
-  Image pacmanUpImage = Toolkit.getDefaultToolkit().getImage("img/pacmanup.jpg"); 
-  Image pacmanDownImage = Toolkit.getDefaultToolkit().getImage("img/pacmandown.jpg"); 
-  Image pacmanLeftImage = Toolkit.getDefaultToolkit().getImage("img/pacmanleft.jpg"); 
-  Image pacmanRightImage = Toolkit.getDefaultToolkit().getImage("img/pacmanright.jpg"); 
-  Image ghost10 = Toolkit.getDefaultToolkit().getImage("img/ghost10.jpg"); 
-  Image ghost20 = Toolkit.getDefaultToolkit().getImage("img/ghost20.jpg"); 
-  Image ghost30 = Toolkit.getDefaultToolkit().getImage("img/ghost30.jpg"); 
-  Image ghost40 = Toolkit.getDefaultToolkit().getImage("img/ghost40.jpg"); 
-  Image ghost11 = Toolkit.getDefaultToolkit().getImage("img/ghost11.jpg"); 
-  Image ghost21 = Toolkit.getDefaultToolkit().getImage("img/ghost21.jpg"); 
-  Image ghost31 = Toolkit.getDefaultToolkit().getImage("img/ghost31.jpg"); 
-  Image ghost41 = Toolkit.getDefaultToolkit().getImage("img/ghost41.jpg"); 
-  Image titleScreenImage = Toolkit.getDefaultToolkit().getImage("img/titleScreen.jpg"); 
-  Image gameOverImage = Toolkit.getDefaultToolkit().getImage("img/gameOver.jpg"); 
-  Image winScreenImage = Toolkit.getDefaultToolkit().getImage("img/winScreen.jpg");
 
   /* Initialize the player and ghosts */
-  Player player = new Player(200,300);
-  Ghost ghost1 = new Ghost(180,180);
-  Ghost ghost2 = new Ghost(200,180);
-  Ghost ghost3 = new Ghost(220,180);
-  Ghost ghost4 = new Ghost(220,180);
+  Player player;
+  Ghost ghost1;
+  Ghost ghost2;
+  Ghost ghost3;
+  Ghost ghost4;
 
   /* Timer is used for playing sound effects and animations */
   long timer = System.currentTimeMillis();
 
+  long titleTimer = -1;
+  long pacmanTimer = -1;
+
   /* Dying is used to count frames in the dying animation.  If it's non-zero,
      pacman is in the process of dying */
   int dying=0;
- 
-  /* Score information */
-  int currScore;
-  int highScore;
 
-  /* if the high scores have been cleared, we have to update the top of the screen to reflect that */
-  boolean clearHighScores= false;
 
   int numLives=2;
 
@@ -91,6 +71,8 @@ public class Board extends JPanel
 
   /* Used to call sound effects */
   GameSounds sounds;
+  GameImages images;
+  GameScore score;
 
   int lastPelletEatenX = 0;
   int lastPelletEatenY=0;
@@ -101,65 +83,22 @@ public class Board extends JPanel
   /* Constructor initializes state flags etc.*/
   public Board() 
   {
-    initHighScores();
     sounds = new GameSounds();
-    currScore=0;
+    images = new GameImages();
+    score = new GameScore();
     stopped=false;
     max=400;
     gridSize=20;
     New=0;
     titleScreen = true;
+    player = new Player(200,300);
+    ghost1 = new Ghost(180,180);
+    ghost2 = new Ghost(200,180);
+    ghost3 = new Ghost(220,180);
+    ghost4 = new Ghost(220,180);
   }
 
-  /* Reads the high scores file and saves it */
-  public void initHighScores()
-  {
-    File file = new File("highScores.txt");
-    Scanner sc;
-    try
-    {
-        sc = new Scanner(file);
-        highScore = sc.nextInt();
-        sc.close();
-    }
-    catch(Exception e)
-    {
-    }
-  }
 
-  /* Writes the new high score to a file and sets flag to update it on screen */
-  public void updateScore(int score)
-  {
-    PrintWriter out;
-    try
-    {
-      out = new PrintWriter("highScores.txt");
-      out.println(score);
-      out.close();
-    }
-    catch(Exception e)
-    {
-    }
-    highScore=score;
-    clearHighScores=true;
-  }
-
-  /* Wipes the high scores file and sets flag to update it on screen */
-  public void clearHighScores()
-  {
-    PrintWriter out;
-    try
-    {
-      out = new PrintWriter("highScores.txt");
-      out.println("0");
-      out.close();
-    }
-    catch(Exception e)
-    {
-    }
-    highScore=0;
-    clearHighScores=true;
-  }
 
   /* Reset occurs on a new game*/
   public void reset()
@@ -378,7 +317,7 @@ public class Board extends JPanel
       sounds.nomNomStop();
 
       /* Draw the pacman */
-      g.drawImage(pacmanImage,player.x,player.y,Color.BLACK,null);
+      g.drawImage(images.getPacmanImage(),player.x,player.y,Color.BLACK,null);
       g.setColor(Color.BLACK);
       
       /* Kill the pacman */
@@ -417,9 +356,9 @@ public class Board extends JPanel
             else
             {
             /* Game over for player.  If relevant, update high score.  Set gameOver flag*/
-              if (currScore > highScore)
+              if (score.getCurrentScore() > score.getHighScore())
               {
-                updateScore(currScore);
+                score.updateScore(score.getCurrentScore());
               }
               overScreen=true;
             }
@@ -434,7 +373,7 @@ public class Board extends JPanel
     {
       g.setColor(Color.BLACK);
       g.fillRect(0,0,600,600);
-      g.drawImage(titleScreenImage,0,0,Color.BLACK,null);
+      g.drawImage(images.getTitleScreenImage(),0,0,Color.BLACK,null);
 
       /* Stop any pacman eating sounds */
       sounds.nomNomStop();
@@ -447,7 +386,7 @@ public class Board extends JPanel
     {
       g.setColor(Color.BLACK);
       g.fillRect(0,0,600,600);
-      g.drawImage(winScreenImage,0,0,Color.BLACK,null);
+      g.drawImage(images.getWinScreenImage(),0,0,Color.BLACK,null);
       New = 1;
       /* Stop any pacman eating sounds */
       sounds.nomNomStop();
@@ -459,7 +398,7 @@ public class Board extends JPanel
     {
       g.setColor(Color.BLACK);
       g.fillRect(0,0,600,600);
-      g.drawImage(gameOverImage,0,0,Color.BLACK,null);
+      g.drawImage(images.getGameOverImage(),0,0,Color.BLACK,null);
       New = 1;
       /* Stop any pacman eating sounds */
       sounds.nomNomStop();
@@ -467,17 +406,17 @@ public class Board extends JPanel
     }
 
     /* If need to update the high scores, redraw the top menu bar */
-    if (clearHighScores)
+    if (score.getHighScoresAreCleared())
     {
       g.setColor(Color.BLACK);
       g.fillRect(0,0,600,18);
       g.setColor(Color.YELLOW);
       g.setFont(font);
-      clearHighScores= false;
+      score.setHighScoresAreCleared(false);
       if (demo)
-        g.drawString("DEMO MODE PRESS ANY KEY TO START A GAME\t High Score: "+highScore,20,10);
+        g.drawString("DEMO MODE PRESS ANY KEY TO START A GAME\t High Score: "+score.getHighScore(),20,10);
       else
-        g.drawString("Score: "+(currScore)+"\t High Score: "+highScore,20,10);
+        g.drawString("Score: "+(score.getCurrentScore())+"\t High Score: "+score.getHighScore(),20,10);
     }
    
     /* oops is set to true when pacman has lost a life */ 
@@ -492,7 +431,7 @@ public class Board extends JPanel
       ghost2 = new Ghost(200,180);
       ghost3 = new Ghost(220,180);
       ghost4 = new Ghost(220,180);
-      currScore = 0;
+      score.setCurrentScore(0);
       drawBoard(g);
       drawPellets(g);
       drawLives(g);
@@ -509,9 +448,9 @@ public class Board extends JPanel
       g.setColor(Color.YELLOW);
       g.setFont(font);
       if (demo)
-        g.drawString("DEMO MODE PRESS ANY KEY TO START A GAME\t High Score: "+highScore,20,10);
+        g.drawString("DEMO MODE PRESS ANY KEY TO START A GAME\t High Score: "+score.getHighScore(),20,10);
       else
-        g.drawString("Score: "+(currScore)+"\t High Score: "+highScore,20,10);
+        g.drawString("Score: "+(score.getCurrentScore())+"\t High Score: "+score.getHighScore(),20,10);
       New++;
     }
     /* Second frame of new game */
@@ -610,7 +549,7 @@ public class Board extends JPanel
       pellets[player.pelletX][player.pelletY]=false;
 
       /* Increment the score */
-      currScore += 50;
+      score.setCurrentScore(score.getCurrentScore() + 50);
 
       /* Update the screen to reflect the new score */
       g.setColor(Color.BLACK);
@@ -618,9 +557,9 @@ public class Board extends JPanel
       g.setColor(Color.YELLOW);
       g.setFont(font);
       if (demo)
-        g.drawString("DEMO MODE PRESS ANY KEY TO START A GAME\t High Score: "+highScore,20,10);
+        g.drawString("DEMO MODE PRESS ANY KEY TO START A GAME\t High Score: "+score.getHighScore(),20,10);
       else
-        g.drawString("Score: "+(currScore)+"\t High Score: "+highScore,20,10);
+        g.drawString("Score: "+(score.getCurrentScore())+"\t High Score: "+score.getHighScore(),20,10);
 
       /* If this was the last pellet */
       if (player.pelletsEaten == 173)
@@ -628,9 +567,9 @@ public class Board extends JPanel
         /*Demo mode can't get a high score */
         if (!demo)
         {
-          if (currScore > highScore)
+          if (score.getCurrentScore() > score.getHighScore())
           {
-            updateScore(currScore);
+            score.updateScore(score.getCurrentScore());
           }
           winScreen = true;
         }
@@ -665,19 +604,19 @@ public class Board extends JPanel
     if (ghost1.frameCount < 5)
     {
       /* Draw first frame of ghosts */
-      g.drawImage(ghost10,ghost1.x,ghost1.y,Color.BLACK,null);
-      g.drawImage(ghost20,ghost2.x,ghost2.y,Color.BLACK,null);
-      g.drawImage(ghost30,ghost3.x,ghost3.y,Color.BLACK,null);
-      g.drawImage(ghost40,ghost4.x,ghost4.y,Color.BLACK,null);
+      g.drawImage(images.getGhost10(),ghost1.x,ghost1.y,Color.BLACK,null);
+      g.drawImage(images.getGhost20(),ghost2.x,ghost2.y,Color.BLACK,null);
+      g.drawImage(images.getGhost30(),ghost3.x,ghost3.y,Color.BLACK,null);
+      g.drawImage(images.getGhost40(),ghost4.x,ghost4.y,Color.BLACK,null);
       ghost1.frameCount++;
     }
     else
     {
       /* Draw second frame of ghosts */
-      g.drawImage(ghost11,ghost1.x,ghost1.y,Color.BLACK,null);
-      g.drawImage(ghost21,ghost2.x,ghost2.y,Color.BLACK,null);
-      g.drawImage(ghost31,ghost3.x,ghost3.y,Color.BLACK,null);
-      g.drawImage(ghost41,ghost4.x,ghost4.y,Color.BLACK,null);
+      g.drawImage(images.getGhost11(),ghost1.x,ghost1.y,Color.BLACK,null);
+      g.drawImage(images.getGhost21(),ghost2.x,ghost2.y,Color.BLACK,null);
+      g.drawImage(images.getGhost31(),ghost3.x,ghost3.y,Color.BLACK,null);
+      g.drawImage(images.getGhost41(),ghost4.x,ghost4.y,Color.BLACK,null);
       if (ghost1.frameCount >=10)
         ghost1.frameCount=0;
       else
@@ -688,7 +627,7 @@ public class Board extends JPanel
     if (player.frameCount < 5)
     {
       /* Draw mouth closed */
-      g.drawImage(pacmanImage,player.x,player.y,Color.BLACK,null);
+      g.drawImage(images.getPacmanImage(),player.x,player.y,Color.BLACK,null);
     }
     else
     {
@@ -699,16 +638,16 @@ public class Board extends JPanel
       switch(player.currDirection)
       {
         case 'L':
-           g.drawImage(pacmanLeftImage,player.x,player.y,Color.BLACK,null);
+           g.drawImage(images.getPacmanLeftImage(),player.x,player.y,Color.BLACK,null);
            break;     
         case 'R':
-           g.drawImage(pacmanRightImage,player.x,player.y,Color.BLACK,null);
+           g.drawImage(images.getPacmanRightImage(),player.x,player.y,Color.BLACK,null);
            break;     
         case 'U':
-           g.drawImage(pacmanUpImage,player.x,player.y,Color.BLACK,null);
+           g.drawImage(images.getPacmanUpImage(),player.x,player.y,Color.BLACK,null);
            break;     
         case 'D':
-           g.drawImage(pacmanDownImage,player.x,player.y,Color.BLACK,null);
+           g.drawImage(images.getPacmanDownImage(),player.x,player.y,Color.BLACK,null);
            break;     
       }
     }
@@ -717,5 +656,233 @@ public class Board extends JPanel
     g.setColor(Color.WHITE);
     g.drawRect(19,19,382,382);
 
+  }
+
+  /* This repaint function repaints only the parts of the screen that may have changed.
+     Namely the area around every player ghost and the menu bars
+  */
+  public void repaintBoard()
+  {
+    if (this.player.teleport)
+    {
+      repaint(this.player.lastX-20,this.player.lastY-20,80,80);
+      this.player.teleport=false;
+    }
+    repaint(0,0,600,20);
+    repaint(0,420,600,40);
+    repaint(this.player.x-20,this.player.y-20,80,80);
+    repaint(this.ghost1.x-20,this.ghost1.y-20,80,80);
+    repaint(this.ghost2.x-20,this.ghost2.y-20,80,80);
+    repaint(this.ghost3.x-20,this.ghost3.y-20,80,80);
+    repaint(this.ghost4.x-20,this.ghost4.y-20,80,80);
+  }
+
+  /* Steps the screen forward one frame */
+  public void stepFrame(boolean New, javax.swing.Timer frameTimer)
+  {
+    /* If we aren't on a special screen than the timers can be set to -1 to disable them */
+    if (!this.titleScreen && !this.winScreen && !this.overScreen)
+    {
+      pacmanTimer = -1;
+      titleTimer = -1;
+    }
+
+    /* If we are playing the dying animation, keep advancing frames until the animation is complete */
+    if (this.dying>0)
+    {
+      this.repaintBoard();
+      return;
+    }
+
+    /* New can either be specified by the New parameter in stepFrame function call or by the state
+       of b.New.  Update New accordingly */
+    New = New || (this.New !=0) ;
+
+    /* If this is the title screen, make sure to only stay on the title screen for 5 seconds.
+       If after 5 seconds the user hasn't started a game, start up demo mode */
+    if (this.titleScreen)
+    {
+      if (titleTimer == -1)
+      {
+        titleTimer = System.currentTimeMillis();
+      }
+
+      long currTime = System.currentTimeMillis();
+      if (currTime - titleTimer >= 5000)
+      {
+        this.titleScreen = false;
+        this.demo = true;
+        titleTimer = -1;
+      }
+      this.repaintBoard();
+      return;
+    }
+
+    /* If this is the win screen or game over screen, make sure to only stay on the screen for 5 seconds.
+       If after 5 seconds the user hasn't pressed a key, go to title screen */
+    else if (this.winScreen || this.overScreen)
+    {
+      if (timer == -1)
+      {
+        timer = System.currentTimeMillis();
+      }
+
+      long currTime = System.currentTimeMillis();
+      if (currTime - timer >= 5000)
+      {
+        this.winScreen = false;
+        this.overScreen = false;
+        this.titleScreen = true;
+        timer = -1;
+      }
+      this.repaintBoard();
+      return;
+    }
+
+
+    /* If we have a normal game state, move all pieces and update pellet status */
+    if (!New)
+    {
+      /* The pacman player has two functions, demoMove if we're in demo mode and move if we're in
+         user playathisle mode.  Call the appropriate one here */
+      if (this.demo)
+      {
+        this.player.demoMove();
+      }
+      else
+      {
+        this.player.move();
+      }
+
+      /* Also move the ghosts, and update the pellet states */
+      this.ghost1.move();
+      this.ghost2.move();
+      this.ghost3.move();
+      this.ghost4.move();
+      this.player.updatePellet();
+      this.ghost1.updatePellet();
+      this.ghost2.updatePellet();
+      this.ghost3.updatePellet();
+      this.ghost4.updatePellet();
+    }
+
+    /* We either have a new game or the user has died, either way we have to reset the thisoard */
+    if (this.stopped || New)
+    {
+      /*Temporarily stop advancing frames */
+      frameTimer.stop();
+
+      /* If user is dying ... */
+      while (this.dying >0)
+      {
+        /* Play dying animation. */
+        stepFrame(false, frameTimer);
+      }
+
+      /* Move all game elements thisack to starting positions and orientations */
+      this.player.currDirection='L';
+      this.player.direction='L';
+      this.player.desiredDirection='L';
+      this.player.x = 200;
+      this.player.y = 300;
+      this.ghost1.x = 180;
+      this.ghost1.y = 180;
+      this.ghost2.x = 200;
+      this.ghost2.y = 180;
+      this.ghost3.x = 220;
+      this.ghost3.y = 180;
+      this.ghost4.x = 220;
+      this.ghost4.y = 180;
+
+      /* Advance a frame to display main state*/
+      this.repaint(0,0,600,600);
+
+      /*Start advancing frames once again*/
+      this.stopped=false;
+      frameTimer.start();
+    }
+    /* Otherwise we're in a normal state, advance one frame*/
+    else
+    {
+      this.repaintBoard();
+    }
+  }
+
+
+  //todo: no win when finished
+
+  public void keyPressedHandler(KeyEvent e){
+    if (this.titleScreen)
+    {
+      this.titleScreen = false;
+      return;
+    }
+    /* Pressing a key in the win screen or game over screen goes to the title screen */
+    else if (this.winScreen || this.overScreen)
+    {
+      this.titleScreen = true;
+      this.winScreen = false;
+      this.overScreen = false;
+      return;
+    }
+    /* Pressing a key during a demo kills the demo mode and starts a new game */
+    else if (this.demo)
+    {
+      this.demo=false;
+      /* Stop any pacman eating sounds */
+      this.sounds.nomNomStop();
+      this.New=1;
+      return;
+    }
+
+    /* Otherwise, key presses control the player! */
+    switch(e.getKeyCode())
+    {
+      case KeyEvent.VK_LEFT:
+        this.player.desiredDirection='L';
+        break;
+      case KeyEvent.VK_RIGHT:
+        this.player.desiredDirection='R';
+        break;
+      case KeyEvent.VK_UP:
+        this.player.desiredDirection='U';
+        break;
+      case KeyEvent.VK_DOWN:
+        this.player.desiredDirection='D';
+        break;
+    }
+
+    this.repaintBoard();
+  }
+
+
+  public void mousePressedHandler(MouseEvent e){
+    if (this.titleScreen || this.winScreen || this.overScreen)
+    {
+      /* If we aren't in the game where a menu is showing, ignore clicks */
+      return;
+    }
+
+    /* Get coordinates of click */
+    int x = e.getX();
+    int y = e.getY();
+    if ( 400 <= y && y <= 460)
+    {
+      if ( 100 <= x && x <= 150)
+      {
+        /* New game has thiseen clicked */
+        this.New = 1;
+      }
+      else if (180 <= x && x <= 300)
+      {
+        /* Clear high scores has thiseen clicked */
+        score.clearHighScores();
+      }
+      else if (350 <= x && x <= 420)
+      {
+        /* Exit has thiseen clicked */
+        System.exit(0);
+      }
+    }
   }
 }
