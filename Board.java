@@ -809,8 +809,6 @@ public class Board extends JPanel
   }
 
 
-  //todo: no win when finished
-
   public void keyPressedHandler(KeyEvent e){
     if (this.titleScreen)
     {
